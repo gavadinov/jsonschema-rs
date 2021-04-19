@@ -13,11 +13,12 @@ pub(crate) struct EnumValidator {
     // Types that occur in items
     types: PrimitiveTypesBitMap,
     items: Vec<Value>,
+    instance_path: Vec<String>,
 }
 
 impl EnumValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value) -> CompilationResult {
+    pub(crate) fn compile(schema: &Value, instance_path: Vec<String>) -> CompilationResult {
         if let Value::Array(items) = schema {
             let mut types = PrimitiveTypesBitMap::new();
             for item in items.iter() {
@@ -27,6 +28,7 @@ impl EnumValidator {
                 options: schema.clone(),
                 items: items.clone(),
                 types,
+                instance_path,
             }))
         } else {
             Err(CompilationError::SchemaError)
@@ -37,7 +39,11 @@ impl EnumValidator {
 impl Validate for EnumValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            error(ValidationError::enumeration(instance, &self.options))
+            error(ValidationError::enumeration(
+                self.instance_path.clone(),
+                instance,
+                &self.options,
+            ))
         } else {
             no_error()
         }
@@ -72,7 +78,10 @@ impl ToString for EnumValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    _: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
-    Some(EnumValidator::compile(schema))
+    Some(EnumValidator::compile(
+        schema,
+        context.curr_instance_path.clone(),
+    ))
 }

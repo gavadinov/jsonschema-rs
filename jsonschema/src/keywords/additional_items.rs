@@ -65,11 +65,15 @@ impl ToString for AdditionalItemsObjectValidator {
 
 pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
+    instance_path: Vec<String>,
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
-    pub(crate) fn compile(items_count: usize) -> CompilationResult {
-        Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
+    pub(crate) fn compile(items_count: usize, instance_path: Vec<String>) -> CompilationResult {
+        Ok(Box::new(AdditionalItemsBooleanValidator {
+            items_count,
+            instance_path,
+        }))
     }
 }
 impl Validate for AdditionalItemsBooleanValidator {
@@ -86,6 +90,7 @@ impl Validate for AdditionalItemsBooleanValidator {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
+                    self.instance_path.clone(),
                     instance,
                     self.items_count,
                 ));
@@ -104,7 +109,7 @@ impl ToString for AdditionalItemsBooleanValidator {
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     if let Some(items) = parent.get("items") {
         match items {
@@ -118,9 +123,10 @@ pub(crate) fn compile(
                         context,
                     )),
                     Value::Bool(true) => Some(TrueValidator::compile()),
-                    Value::Bool(false) => {
-                        Some(AdditionalItemsBooleanValidator::compile(items_count))
-                    }
+                    Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
+                        items_count,
+                        context.curr_instance_path.clone(),
+                    )),
                     _ => None,
                 }
             }

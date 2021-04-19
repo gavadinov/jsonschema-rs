@@ -10,6 +10,7 @@ pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
     validators: Validators,
+    instance_path: Vec<String>,
 }
 
 impl NotValidator {
@@ -18,6 +19,7 @@ impl NotValidator {
         Ok(Box::new(NotValidator {
             original: schema.clone(),
             validators: compile_validators(schema, context)?,
+            instance_path: context.curr_instance_path.clone(),
         }))
     }
 }
@@ -34,7 +36,11 @@ impl Validate for NotValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::not(instance, self.original.clone()))
+            error(ValidationError::not(
+                self.instance_path.clone(),
+                instance,
+                self.original.clone(),
+            ))
         }
     }
 }
@@ -49,7 +55,7 @@ impl ToString for NotValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     Some(NotValidator::compile(schema, context))
 }

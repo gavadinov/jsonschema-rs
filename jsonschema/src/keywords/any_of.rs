@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 
 pub(crate) struct AnyOfValidator {
     schemas: Vec<Validators>,
+    instance_path: Vec<String>,
 }
 
 impl AnyOfValidator {
@@ -19,7 +20,10 @@ impl AnyOfValidator {
                 let validators = compile_validators(item, context)?;
                 schemas.push(validators)
             }
-            Ok(Box::new(AnyOfValidator { schemas }))
+            Ok(Box::new(AnyOfValidator {
+                schemas,
+                instance_path: context.curr_instance_path.clone(),
+            }))
         } else {
             Err(CompilationError::SchemaError)
         }
@@ -43,7 +47,10 @@ impl Validate for AnyOfValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::any_of(instance))
+            error(ValidationError::any_of(
+                self.instance_path.clone(),
+                instance,
+            ))
         }
     }
 }
@@ -57,7 +64,7 @@ impl ToString for AnyOfValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     Some(AnyOfValidator::compile(schema, context))
 }

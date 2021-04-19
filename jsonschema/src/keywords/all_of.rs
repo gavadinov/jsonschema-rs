@@ -58,7 +58,7 @@ impl ToString for AllOfValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     Some(AllOfValidator::compile(schema, context))
 }

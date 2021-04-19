@@ -207,7 +207,7 @@ impl ToString for IfThenElseValidator {
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     let then = parent.get("then");
     let else_ = parent.get("else");

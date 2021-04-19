@@ -10,12 +10,14 @@ use std::f64::EPSILON;
 
 struct ConstArrayValidator {
     value: Vec<Value>,
+    instance_path: Vec<String>,
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &[Value]) -> CompilationResult {
+    pub(crate) fn compile(value: &[Value], instance_path: Vec<String>) -> CompilationResult {
         Ok(Box::new(ConstArrayValidator {
             value: value.to_vec(),
+            instance_path,
         }))
     }
 }
@@ -25,7 +27,11 @@ impl Validate for ConstArrayValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_array(instance, &self.value))
+            error(ValidationError::constant_array(
+                self.instance_path.clone(),
+                instance,
+                &self.value,
+            ))
         }
     }
 
@@ -53,11 +59,15 @@ impl ToString for ConstArrayValidator {
 
 struct ConstBooleanValidator {
     value: bool,
+    instance_path: Vec<String>,
 }
 impl ConstBooleanValidator {
     #[inline]
-    pub(crate) fn compile(value: bool) -> CompilationResult {
-        Ok(Box::new(ConstBooleanValidator { value }))
+    pub(crate) fn compile(value: bool, instance_path: Vec<String>) -> CompilationResult {
+        Ok(Box::new(ConstBooleanValidator {
+            value,
+            instance_path,
+        }))
     }
 }
 impl Validate for ConstBooleanValidator {
@@ -66,7 +76,11 @@ impl Validate for ConstBooleanValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_boolean(instance, self.value))
+            error(ValidationError::constant_boolean(
+                self.instance_path.clone(),
+                instance,
+                self.value,
+            ))
         }
     }
 
@@ -85,11 +99,13 @@ impl ToString for ConstBooleanValidator {
     }
 }
 
-struct ConstNullValidator {}
+struct ConstNullValidator {
+    instance_path: Vec<String>,
+}
 impl ConstNullValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
-        Ok(Box::new(ConstNullValidator {}))
+    pub(crate) fn compile(instance_path: Vec<String>) -> CompilationResult {
+        Ok(Box::new(ConstNullValidator { instance_path }))
     }
 }
 impl Validate for ConstNullValidator {
@@ -98,7 +114,10 @@ impl Validate for ConstNullValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_null(instance))
+            error(ValidationError::constant_null(
+                self.instance_path.clone(),
+                instance,
+            ))
         }
     }
 
@@ -117,12 +136,17 @@ struct ConstNumberValidator {
     // This is saved in order to ensure that the error message is not altered by precision loss
     original_value: Number,
     value: f64,
+    instance_path: Vec<String>,
 }
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile(original_value: &Number) -> CompilationResult {
+    pub(crate) fn compile(
+        original_value: &Number,
+        instance_path: Vec<String>,
+    ) -> CompilationResult {
         Ok(Box::new(ConstNumberValidator {
+            instance_path,
             original_value: original_value.clone(),
             value: original_value
                 .as_f64()
@@ -137,6 +161,7 @@ impl Validate for ConstNumberValidator {
             no_error()
         } else {
             error(ValidationError::constant_number(
+                self.instance_path.clone(),
                 instance,
                 &self.original_value,
             ))
@@ -160,12 +185,17 @@ impl ToString for ConstNumberValidator {
 
 pub(crate) struct ConstObjectValidator {
     value: Map<String, Value>,
+    instance_path: Vec<String>,
 }
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile(value: &Map<String, Value>) -> CompilationResult {
+    pub(crate) fn compile(
+        value: &Map<String, Value>,
+        instance_path: Vec<String>,
+    ) -> CompilationResult {
         Ok(Box::new(ConstObjectValidator {
+            instance_path,
             value: value.clone(),
         }))
     }
@@ -176,7 +206,11 @@ impl Validate for ConstObjectValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_object(instance, &self.value))
+            error(ValidationError::constant_object(
+                self.instance_path.clone(),
+                instance,
+                &self.value,
+            ))
         }
     }
 
@@ -204,12 +238,14 @@ impl ToString for ConstObjectValidator {
 
 pub(crate) struct ConstStringValidator {
     value: String,
+    instance_path: Vec<String>,
 }
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &str) -> CompilationResult {
+    pub(crate) fn compile(value: &str, instance_path: Vec<String>) -> CompilationResult {
         Ok(Box::new(ConstStringValidator {
+            instance_path,
             value: value.to_string(),
         }))
     }
@@ -220,7 +256,11 @@ impl Validate for ConstStringValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_string(instance, &self.value))
+            error(ValidationError::constant_string(
+                self.instance_path.clone(),
+                instance,
+                &self.value,
+            ))
         }
     }
 
@@ -243,14 +283,31 @@ impl ToString for ConstStringValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    _: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     match schema {
-        Value::Array(items) => Some(ConstArrayValidator::compile(items)),
-        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item)),
-        Value::Null => Some(ConstNullValidator::compile()),
-        Value::Number(item) => Some(ConstNumberValidator::compile(item)),
-        Value::Object(map) => Some(ConstObjectValidator::compile(map)),
-        Value::String(string) => Some(ConstStringValidator::compile(string)),
+        Value::Array(items) => Some(ConstArrayValidator::compile(
+            items,
+            context.curr_instance_path.clone(),
+        )),
+        Value::Bool(item) => Some(ConstBooleanValidator::compile(
+            *item,
+            context.curr_instance_path.clone(),
+        )),
+        Value::Null => Some(ConstNullValidator::compile(
+            context.curr_instance_path.clone(),
+        )),
+        Value::Number(item) => Some(ConstNumberValidator::compile(
+            item,
+            context.curr_instance_path.clone(),
+        )),
+        Value::Object(map) => Some(ConstObjectValidator::compile(
+            map,
+            context.curr_instance_path.clone(),
+        )),
+        Value::String(string) => Some(ConstStringValidator::compile(
+            string,
+            context.curr_instance_path.clone(),
+        )),
     }
 }

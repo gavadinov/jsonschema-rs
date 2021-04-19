@@ -19,7 +19,10 @@ impl DependenciesValidator {
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
                 let s = match subschema {
-                    Value::Array(_) => vec![RequiredValidator::compile(subschema)?],
+                    Value::Array(_) => vec![RequiredValidator::compile(
+                        subschema,
+                        context.curr_instance_path.clone(),
+                    )?],
                     _ => compile_validators(subschema, context)?,
                 };
                 dependencies.push((key.clone(), s))
@@ -80,7 +83,7 @@ impl ToString for DependenciesValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     Some(DependenciesValidator::compile(schema, context))
 }

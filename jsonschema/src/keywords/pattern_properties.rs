@@ -85,7 +85,7 @@ impl ToString for PatternPropertiesValidator {
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic

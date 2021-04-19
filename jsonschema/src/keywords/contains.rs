@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 
 pub(crate) struct ContainsValidator {
     validators: Validators,
+    instance_path: Vec<String>,
 }
 
 impl ContainsValidator {
@@ -15,6 +16,7 @@ impl ContainsValidator {
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(ContainsValidator {
             validators: compile_validators(schema, context)?,
+            instance_path: context.curr_instance_path.clone(),
         }))
     }
 }
@@ -48,7 +50,10 @@ impl Validate for ContainsValidator {
                     return no_error();
                 }
             }
-            error(ValidationError::contains(instance))
+            error(ValidationError::contains(
+                self.instance_path.clone(),
+                instance,
+            ))
         } else {
             no_error()
         }
@@ -65,7 +70,7 @@ impl ToString for ContainsValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     Some(ContainsValidator::compile(schema, context))
 }

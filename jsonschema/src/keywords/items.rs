@@ -14,10 +14,15 @@ pub(crate) struct ItemsArrayValidator {
 }
 impl ItemsArrayValidator {
     #[inline]
-    pub(crate) fn compile(schemas: &[Value], context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile(
+        schemas: &[Value],
+        context: &mut CompilationContext,
+    ) -> CompilationResult {
         let mut items = Vec::with_capacity(schemas.len());
-        for item in schemas {
+        for (i, item) in schemas.iter().enumerate() {
+            context.curr_instance_path.push(i.to_string());
             let validators = compile_validators(item, context)?;
+            context.curr_instance_path.pop();
             items.push(validators)
         }
         Ok(Box::new(ItemsArrayValidator { items }))
@@ -114,7 +119,7 @@ impl ToString for ItemsObjectValidator {
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),

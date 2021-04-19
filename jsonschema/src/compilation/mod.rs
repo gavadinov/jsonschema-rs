@@ -90,7 +90,7 @@ pub(crate) fn compile_validators(
     schema: &Value,
     context: &CompilationContext,
 ) -> Result<Validators, CompilationError> {
-    let context = context.push(schema)?;
+    let mut context = context.push(schema)?;
     match schema {
         Value::Bool(value) => Ok(vec![
             keywords::boolean::compile(*value).expect("Should always compile")?
@@ -107,7 +107,7 @@ pub(crate) fn compile_validators(
                 let mut validators = Vec::with_capacity(object.len());
                 for (keyword, subschema) in object {
                     if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
-                        if let Some(validator) = compilation_func(object, subschema, &context) {
+                        if let Some(validator) = compilation_func(object, subschema, &mut context) {
                             validators.push(validator?)
                         }
                     }
